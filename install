@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+DOTFILES_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+for module_installer in "$DOTFILES_DIR"/*/install; do
+    if [ -f "$module_installer" ]; then
+        "$module_installer"
+    fi
+done
+
+printf 'Installed dotfiles modules from %s\n' "$DOTFILES_DIR"

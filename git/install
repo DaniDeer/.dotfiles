@@ -1,0 +1,61 @@
+#!/bin/sh
+set -eu
+
+MODULE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+GIT_CONFIG_DIR="$HOME/.config/git"
+PREFERENCES="$GIT_CONFIG_DIR/dotfiles"
+PROXY_CONFIG="$GIT_CONFIG_DIR/dotfiles-proxy"
+
+mkdir -p "$GIT_CONFIG_DIR"
+ln -sfn "$MODULE_DIR/config" "$PREFERENCES"
+
+if ! git config --global --get-all include.path 2>/dev/null | grep -Fqx "$PREFERENCES"; then
+    git config --global --add include.path "$PREFERENCES"
+fi
+
+if ! git config --global --get-all include.path 2>/dev/null | grep -Fqx "$PROXY_CONFIG"; then
+    git config --global --add include.path "$PROXY_CONFIG"
+fi
+
+HTTP_PROXY_VALUE=${http_proxy:-${HTTP_PROXY:-}}
+HTTPS_PROXY_VALUE=${https_proxy:-${HTTPS_PROXY:-}}
+
+if [ -n "$HTTP_PROXY_VALUE" ] || [ -n "$HTTPS_PROXY_VALUE" ]; then
+    umask 077
+    {
+        if [ -n "$HTTP_PROXY_VALUE" ]; then
+            printf '%s\n' '[http]' "    proxy = $HTTP_PROXY_VALUE"
+        fi
+        if [ -n "$HTTPS_PROXY_VALUE" ]; then
+            printf '%s\n' '[https]' "    proxy = $HTTPS_PROXY_VALUE"
+        fi
+    } > "$PROXY_CONFIG"
+else
+    rm -f "$PROXY_CONFIG"
+fi
+
+if [ -n "${GIT_USER_NAME:-}" ]; then
+    git config --global user.name "$GIT_USER_NAME"
+fi
+
+if [ -n "${GIT_USER_EMAIL:-}" ]; then
+    git config --global user.email "$GIT_USER_EMAIL"
+fi
+
+if ! git config --global user.name >/dev/null 2>&1 || \
+   ! git config --global user.email >/dev/null 2>&1; then
+    printf '%s\n' 'Git identity not configured. Set GIT_USER_NAME and GIT_USER_EMAIL, then rerun ./install.' >&2
+fi
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    if command -v gh >/dev/null 2>&1; then
+        if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+            printf '%s' "$GH_TOKEN" | gh auth login --hostname github.com --with-token >/dev/null
+        fi
+        gh auth setup-git
+    else
+        printf '%s\n' 'GH_TOKEN is set, but gh is not installed; GitHub authentication was skipped.' >&2
+    fi
+fi
+
+printf 'Installed Git module from %s\n' "$MODULE_DIR"
