@@ -3,44 +3,33 @@ set -eu
 
 MODULE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 GIT_CONFIG_DIR="$HOME/.config/git"
-PREFERENCES="$GIT_CONFIG_DIR/dotfiles"
-PROXY_CONFIG="$GIT_CONFIG_DIR/dotfiles-proxy"
 
-mkdir -p "$GIT_CONFIG_DIR"
-ln -sfn "$MODULE_DIR/config" "$PREFERENCES"
+GIT_USER_NAME_VALUE=${GIT_USER_NAME:-}
+GIT_USER_EMAIL_VALUE=${GIT_USER_EMAIL:-}
 
-if ! git config --global --get-all include.path 2>/dev/null | grep -Fqx "$PREFERENCES"; then
-    git config --global --add include.path "$PREFERENCES"
+if [ -z "$GIT_USER_NAME_VALUE" ]; then
+    GIT_USER_NAME_VALUE=$(git config --global --get user.name 2>/dev/null || true)
 fi
 
-if ! git config --global --get-all include.path 2>/dev/null | grep -Fqx "$PROXY_CONFIG"; then
-    git config --global --add include.path "$PROXY_CONFIG"
+if [ -z "$GIT_USER_EMAIL_VALUE" ]; then
+    GIT_USER_EMAIL_VALUE=$(git config --global --get user.email 2>/dev/null || true)
 fi
 
-HTTP_PROXY_VALUE=${http_proxy:-${HTTP_PROXY:-}}
-HTTPS_PROXY_VALUE=${https_proxy:-${HTTPS_PROXY:-}}
+cp "$MODULE_DIR/config" "$HOME/.gitconfig"
 
-if [ -n "$HTTP_PROXY_VALUE" ] || [ -n "$HTTPS_PROXY_VALUE" ]; then
-    umask 077
+if [ -n "$GIT_USER_NAME_VALUE" ] || [ -n "$GIT_USER_EMAIL_VALUE" ]; then
     {
-        if [ -n "$HTTP_PROXY_VALUE" ]; then
-            printf '%s\n' '[http]' "    proxy = $HTTP_PROXY_VALUE"
+        printf '\n[user]\n'
+        if [ -n "$GIT_USER_NAME_VALUE" ]; then
+            printf '    name = %s\n' "$GIT_USER_NAME_VALUE"
         fi
-        if [ -n "$HTTPS_PROXY_VALUE" ]; then
-            printf '%s\n' '[https]' "    proxy = $HTTPS_PROXY_VALUE"
+        if [ -n "$GIT_USER_EMAIL_VALUE" ]; then
+            printf '    email = %s\n' "$GIT_USER_EMAIL_VALUE"
         fi
-    } > "$PROXY_CONFIG"
-else
-    rm -f "$PROXY_CONFIG"
+    } >> "$HOME/.gitconfig"
 fi
 
-if [ -n "${GIT_USER_NAME:-}" ]; then
-    git config --global user.name "$GIT_USER_NAME"
-fi
-
-if [ -n "${GIT_USER_EMAIL:-}" ]; then
-    git config --global user.email "$GIT_USER_EMAIL"
-fi
+rm -f "$GIT_CONFIG_DIR/dotfiles" "$GIT_CONFIG_DIR/dotfiles-proxy"
 
 if ! git config --global user.name >/dev/null 2>&1 || \
    ! git config --global user.email >/dev/null 2>&1; then

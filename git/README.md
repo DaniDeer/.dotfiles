@@ -14,17 +14,13 @@ GIT_USER_EMAIL='you@example.com' \
 
 Identity variables are optional when Git identity is already configured. The module is safe to rerun and does not store credentials or signing keys in the repository.
 
+## Configuration layout
+
+The installer builds one self-contained `~/.gitconfig` from `git/config` and the optional identity variables. It intentionally avoids Git config includes to keep the setup simple and predictable, especially in devcontainers where host-specific include paths or files may not exist.
+
 ## Proxy configuration
 
-When `http_proxy` or `https_proxy` is set, the installer applies it to Git's matching `http.proxy` or `https.proxy` setting. Uppercase `HTTP_PROXY` and `HTTPS_PROXY` are supported as fallbacks.
-
-```sh
-http_proxy='http://proxy.example.com:8080' \
-https_proxy='http://proxy.example.com:8080' \
-./install
-```
-
-Values are written to the mode-restricted, generated file `~/.config/git/dotfiles-proxy`, not to this repository. When proxy variables are absent on a later run, this module removes its generated proxy settings while preserving unrelated Git configuration.
+Git uses the host's `http_proxy`, `https_proxy`, and `no_proxy` environment variables directly. The installer does not persist proxy values, so devcontainers without these variables do not inherit host-specific settings.
 
 ## GitHub authentication
 
